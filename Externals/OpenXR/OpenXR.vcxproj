@@ -57,8 +57,7 @@
       </AdditionalDependencies>
     </Lib>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>xcopy /y "$(ProjectDir)native\x64\release\bin\*" "$(SolutionDir)Binary\x64"</Command>
       <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
     </PostBuildEvent>
     <PostBuildEvent>
@@ -78,8 +77,7 @@
       </AdditionalDependencies>
     </Lib>
     <PostBuildEvent>
-      <Command>
-      </Command>
+      <Command>robocopy /y "$(ProjectDir)native\x64\release\bin\*" "$(SolutionDir)Binary\x64"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>
