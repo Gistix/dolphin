@@ -100,6 +100,10 @@ private:
   void OnSwapChainResized();
   void BindFramebuffer(VKFramebuffer* fb);
 
+#if USE_OPENXR
+  std::unique_ptr<OpenXR::Session> CreateOpenXRSession() override;
+#endif
+
   std::unique_ptr<SwapChain> m_swap_chain;
 
   // Keep a copy of sampler states to avoid cache lookups every draw

@@ -34,7 +34,8 @@ enum class StereoMode : int
   TAB,
   Anaglyph,
   QuadBuffer,
-  Passive
+  Passive,
+  OpenXR,
 };
 
 enum class ShaderCompilationMode : int
@@ -144,6 +145,11 @@ struct VideoConfig final
   bool bStereoSwapEyes = false;
   bool bStereoEFBMonoDepth = false;
   int iStereoDepthPercentage = 0;
+
+  bool IsStereoModeSeparateBuffer() const
+  {
+    return stereo_mode == StereoMode::QuadBuffer || stereo_mode == StereoMode::OpenXR;
+  }
 
   // D3D only config, mostly to be merged into the above
   int iAdapter = 0;

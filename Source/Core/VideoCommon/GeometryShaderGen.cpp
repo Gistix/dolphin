@@ -100,7 +100,8 @@ ShaderCode GenerateGeometryShaderCode(APIType api_type, const ShaderHostConfig& 
   out.Write("\tfloat4 " I_STEREOPARAMS ";\n"
             "\tfloat4 " I_LINEPTPARAMS ";\n"
             "\tint4 " I_TEXOFFSET ";\n"
-            "}};\n");
+            "\tfloat4 " I_EYEVIEWS "[2][4];\n"
+             "}};\n");
 
   out.Write("struct VS_OUTPUT {{\n");
   GenerateVSOutputMembers(out, api_type, uid_data->numTexGens, host_config, "",

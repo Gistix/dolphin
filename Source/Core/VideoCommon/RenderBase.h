@@ -26,6 +26,7 @@
 #include "Common/Event.h"
 #include "Common/Flag.h"
 #include "Common/MathUtil.h"
+#include "Common/OpenXR.h"
 #include "VideoCommon/AsyncShaderCompiler.h"
 #include "VideoCommon/BPMemory.h"
 #include "VideoCommon/FPSCounter.h"
@@ -271,6 +272,12 @@ public:
 
   const GraphicsModManager& GetGraphicsModManager() const;
 
+  
+#if USE_OPENXR
+  OpenXR::Session* GetOpenXRSession() { return m_openxr_session.get(); }
+  const OpenXR::Session* GetOpenXRSession() const { return m_openxr_session.get(); }
+#endif
+
 protected:
   // Bitmask containing information about which configuration has changed for the backend.
   enum ConfigChangeBits : u32
@@ -311,6 +318,10 @@ protected:
   void DrawImGui();
 
   virtual std::unique_ptr<BoundingBox> CreateBoundingBox() const = 0;
+
+#if USE_OPENXR
+  virtual std::unique_ptr<OpenXR::Session> CreateOpenXRSession() { return {}; }
+#endif
 
   AbstractFramebuffer* m_current_framebuffer = nullptr;
   const AbstractPipeline* m_current_pipeline = nullptr;
@@ -356,6 +367,12 @@ private:
 
   PixelFormat m_prev_efb_format = PixelFormat::INVALID_FMT;
   unsigned int m_efb_scale = 1;
+
+#if USE_OPENXR
+  void CheckOpenXRState();
+
+  std::unique_ptr<OpenXR::Session> m_openxr_session;
+#endif
 
   // These will be set on the first call to SetWindowSize.
   int m_last_window_request_width = 0;

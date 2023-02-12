@@ -33,6 +33,7 @@
 #include "Common/Image.h"
 #include "Common/Logging/Log.h"
 #include "Common/MsgHandler.h"
+#include "Common/OpenXR.h"
 #include "Common/Profiler.h"
 #include "Common/StringUtil.h"
 #include "Common/Thread.h"
@@ -152,6 +153,10 @@ bool Renderer::Initialize()
     m_graphics_mod_manager.Load(*g_ActiveConfig.graphics_mod_config);
   }
 
+#if USE_OPENXR
+  CheckOpenXRState();
+#endif
+
   return true;
 }
 
@@ -159,6 +164,10 @@ void Renderer::Shutdown()
 {
   // Disable ControllerInterface's aspect ratio adjustments so mapping dialog behaves normally.
   g_controller_interface.SetAspectRatioAdjustment(1);
+#if USE_OPENXR
+  m_openxr_session = {};
+  OpenXR::Shutdown();
+#endif
 
   // First stop any framedumping, which might need to dump the last xfb frame. This process
   // can require additional graphics sub-systems so it needs to be done first
@@ -554,6 +563,12 @@ void Renderer::CheckForConfigChanges()
     SetPipeline(nullptr);
   }
 
+  if (changed_bits & CONFIG_CHANGE_BIT_STEREO_MODE)
+  {
+    // OpenXR may have modified our backbuffer size.
+    ResizeSurface();
+  }
+
   // Framebuffer changed?
   if (changed_bits & (CONFIG_CHANGE_BIT_MULTISAMPLES | CONFIG_CHANGE_BIT_STEREO_MODE |
                       CONFIG_CHANGE_BIT_TARGET_SIZE))
@@ -584,6 +599,10 @@ void Renderer::CheckForConfigChanges()
     RecompileImGuiPipeline();
     m_post_processor->RecompilePipeline();
   }
+
+#if USE_OPENXR
+  CheckOpenXRState();
+#endif
 }
 
 // Create On-Screen-Messages
@@ -971,6 +990,23 @@ std::tuple<int, int> Renderer::CalculateOutputDimensions(int width, int height) 
 
   return std::make_tuple(width, height);
 }
+
+#if USE_OPENXR
+void Renderer::CheckOpenXRState()
+{
+  if (g_ActiveConfig.stereo_mode == StereoMode::OpenXR)
+  {
+    if (!m_openxr_session)
+    {
+      m_openxr_session = CreateOpenXRSession();
+    }
+  }
+  else
+  {
+    m_openxr_session = {};
+  }
+}
+#endif
 
 void Renderer::CheckFifoRecording()
 {
@@ -1381,6 +1417,18 @@ void Renderer::Swap(u32 xfb_addr, u32 fb_width, u32 fb_stride, u32 fb_height, u6
         if (!is_duplicate_frame)
           UpdateWidescreenHeuristic();
 
+#if USE_OPENXR
+        if (m_openxr_session)
+        {
+          m_openxr_session->BeginFrame();
+
+          // Force backbufer size to swapchain size. There must be a cleaner way to do this.
+          const auto swapchain_size = m_openxr_session->GetSwapchainSize();
+          m_backbuffer_width = swapchain_size.width;
+          m_backbuffer_height = swapchain_size.height;
+        }
+#endif
+
         UpdateDrawRectangle();
 
         // Adjust the source rectangle instead of using an oversized viewport to render the XFB.
@@ -1397,6 +1445,20 @@ void Renderer::Swap(u32 xfb_addr, u32 fb_width, u32 fb_stride, u32 fb_height, u6
           std::lock_guard<std::mutex> guard(m_swap_mutex);
           PresentBackbuffer();
         }
+
+#if USE_OPENXR
+        if (m_openxr_session)
+        {
+          m_openxr_session->ReleaseSwapchainImage();
+          m_openxr_session->EndFrame();
+
+          // If OpenXR session has been destroyed reset our pointer to stop tons of error logs.
+          if (!m_openxr_session->IsValid())
+          {
+            m_openxr_session = {};
+          }
+        }
+#endif
 
         // Update the window size based on the frame that was just rendered.
         // Due to depending on guest state, we need to call this every frame.

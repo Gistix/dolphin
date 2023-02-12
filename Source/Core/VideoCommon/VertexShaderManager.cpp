@@ -14,6 +14,7 @@
 #include "Common/Config/Config.h"
 #include "Common/Logging/Log.h"
 #include "Common/Matrix.h"
+#include "Common/OpenXR.h"
 #include "Core/Config/GraphicsSettings.h"
 #include "Core/ConfigManager.h"
 #include "Core/Core.h"
@@ -412,8 +413,14 @@ void VertexShaderManager::SetConstants(const std::vector<std::string>& textures)
 
     auto corrected_matrix = s_viewportCorrection * Common::Matrix44::FromArray(g_fProjectionMatrix);
 
-    if (g_freelook_camera.IsActive() && xfmem.projection.type == ProjectionType::Perspective)
-      corrected_matrix *= g_freelook_camera.GetView();
+    if (xfmem.projection.type == ProjectionType::Perspective)
+    {
+      if (auto session = g_renderer->GetOpenXRSession())
+        corrected_matrix *= session->GetEyeViewMatrix(0, 0, 0);
+
+      if (g_freelook_camera.IsActive())
+        corrected_matrix *= g_freelook_camera.GetView();
+    }
 
     for (auto action : projection_actions)
     {
